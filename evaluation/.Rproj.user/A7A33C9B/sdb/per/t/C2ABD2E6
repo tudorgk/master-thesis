@@ -1,0 +1,21 @@
+{
+    "collab_server" : "",
+    "contents" : "library(varhandle)\nlibrary(lme4);library(lsmeans);library(lmerTest);library(MASS)\nlibrary(gdata);library(ggplot2)\n####################Read in data\nd=read.xls(\"questions.xlsx\",header=TRUE)\nd;attach(d)\nhead(d)\n\ntable1=table(Device_assessment,as.factor(Q1))\ntable2=table(Device_assessment,as.factor(Q2))\ntable3=table(Device_assessment,as.factor(Q3))\ntable4=table(Device_assessment,as.factor(Q4))\ntable5=table(Device_assessment,as.factor(Q5))\ntable6=table(Device_assessment,as.factor(Q6))\n\nchiQ1 = chisq.test(table1)\nchiQ2 = chisq.test(table2)\nchiQ3 = chisq.test(table3)\nchiQ4 = chisq.test(table4)\nchiQ5 = chisq.test(table5)\nchiQ6 = chisq.test(table6)\n\nchiQ1$p.value\nchiQ2$p.value\nchiQ3$p.value\nchiQ4$p.value\nchiQ5$p.value\nchiQ6$p.value",
+    "created" : 1485262658251.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "2556498565",
+    "id" : "C2ABD2E6",
+    "lastKnownWriteTime" : 1485267555,
+    "last_content_update" : 1485267555344,
+    "path" : "~/Documents/master-thesis/evaluation/Survey-Evaluation.R",
+    "project_path" : "Survey-Evaluation.R",
+    "properties" : {
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 4,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

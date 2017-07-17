@@ -1,0 +1,164 @@
+d=read.csv("data.csv",header=TRUE)
+d;attach(d)
+head(d)
+
+#install.packages("lme4")
+library(lme4);library(lsmeans);library(lmerTest);library(MASS)
+library(ggplot2); library(Rmisc);
+library(dplyr)
+
+
+####################Prepare data
+#Transform data - Because the residuals was not normally distributed in the model
+#INFO: page 231, 0.5 was added to all (Sokal and Rohlf) and a natural log transformation was done - because lambda = 0 in boxcox
+completion_time<-1/sqrt(d$completion_time)
+
+####################Data transformation
+par(mfrow=c(2,2)) 	#For more plots in one window
+plot(d$completion_time,main = "Plot of completion times before power tranformation", ylab = "Completion time (s)")
+plot(completion_time,main = "Plot of completion times after power tranformation", ylab = "Completion time (s)")
+hist(d$completion_time,main = "Histogram of completion times before power tranformation", xlab = "Completion time (s)")
+hist(completion_time,main = "Histogram of completion times after power tranformation", xlab = "Completion time (s)")
+
+
+###################Finding the right model
+#Quick look at the data
+d$combine_trial_dist<-as.factor(paste(trial_type,target_distance,sep=""))	
+plot(d$combine_trial_dist,completion_time)		#Corresponds to model (without user_id)
+plot(trial_type,completion_time)			#Corresponds to a model with only trial type
+
+
+##Model reduction
+model4<-lmer(completion_time ~ trial_type*target_distance + direction_axis*trial_type + task_number + (1|user_id))		#Repeated measures factorial ANCOVA (mixed effects model) with interaction (user is random effect)
+
+#Repeated measures two-way ANOVA (mixed effects model) with interaction
+model3<-lmer(completion_time ~ trial_type*target_distance + direction_axis + task_number + (1|user_id))
+anova(model3,model4)
+
+model2<-lmer(completion_time ~ trial_type +target_distance + direction_axis + task_number + (1|user_id))
+	anova(model2,model3)
+
+#The models are not significantly different(p>0.05) (the interaction is not significant), so 
+ #we carry on with model 2.
+
+#Test of task_number
+model1<-lmer(completion_time ~ trial_type +target_distance + direction_axis + (1|user_id))
+	anova(model2,model1)
+
+#The models are not significantly different(p>0.05) (task_number is not significant), so 
+ #we carry on with model 1.
+
+#Test of direction_axis
+model0<-lmer(completion_time ~ trial_type +target_distance + (1|user_id))
+	anova(model1,model0)
+
+#They are significantly different, so model 1 is our final model (direction_axis is significant).
+
+##################### Model validation
+#Before transformation
+model1_nontrans<-lmer(d$completion_time ~ trial_type +target_distance + direction_axis + (1|user_id))	
+residuals_nontrans<-residuals(model1_nontrans)
+par(mfrow=c(2,3)) 	#For more plots in one window
+plot(fitted(model1_nontrans),residuals_nontrans,main = "Scatterplot of residuals before transformation", ylab = "Residuals before transformation", xlab = "Fitted model values");  abline(0,0)				#Test of the variance homogeneity
+hist(residuals_nontrans,main = "Histogram of residuals before transformation", xlab = "Residuals before transformation")										#Test of the normal distribution with histogram
+qqnorm(residuals(model1_nontrans),main = "Normal QQ-plot before transformation"); abline(mean(residuals_nontrans),sd(residuals_nontrans))	#Test of the normal distribution with QQ-plot
+
+#Which transformation may be appropriate - using boxcox plot
+#boxcox(d$nr_of_clutches ~ trial_type*target_distance, )		#Before transformation, lambda=0, meaning XXXX 
+
+#After transformation
+residuals<-residuals(model1)
+plot(fitted(model1),residuals,main = "Scatterplot of residuals after transformation", ylab = "Residuals after transformation", xlab = "Fitted model values");  abline(0,0)	#Test of the variance homogeneity
+hist(residuals,main = "Histogram of residuals after transformation", xlab = "Residuals after transformation")						#Test of the normal distribution with histogram
+qqnorm(residuals(model1),main = "Normal QQ-plot after transformation"); abline(mean(residuals),sd(residuals))	#Test of the normal distribution with QQ-plot
+
+#####################Hypothesis testing - Test if there is a difference between trial types
+model00<-lmer(completion_time ~ target_distance + direction_axis +(1|user_id))
+anova(model1,model00)			#The test
+
+####################Hypothesis testing - Test if there is a difference between trial types
+#From above we saw that the interaction was insignificant. With LSM we can test the difference for each level.
+LSM<-lsmeans::lsmeans(model1, ~ trial_type * target_distance)	#Estimates for each level
+T<-contrast(LSM, "pairwise",adjust="none");T		#Estimates for the contrasts
+CIs<-confint(T)							#95% CIs for the contrasts
+#Read about lsmeans: https://cran.r-project.org/web/packages/lsmeans/vignettes/using-lsmeans.pdf
+LSM_summary<-summary(LSM)
+#Back transforming
+LSM_summary$lsmean <- 1/(LSM_summary$lsmean)^2
+LSM_summary$lower.CL <- 1/(LSM_summary$lower.CL)^2
+LSM_summary$upper.CL <- 1/(LSM_summary$upper.CL)^2
+LSM_summary$target_distance <- factor(LSM_summary$target_distance, levels = rev(levels(LSM_summary$target_distance)))
+ggplot(LSM_summary, aes(x=target_distance, y=lsmean, colour=trial_type, group=trial_type)) + 
+  geom_errorbar(aes(ymin=lower.CL, ymax=upper.CL), width=.1, 
+                position=position_dodge(0.05)) +
+  scale_colour_hue(name="Interaction Method")  +     # Set legend title
+  scale_linetype_discrete(name="Interaction Method") +
+  xlab("Target Distance") +
+  ylab("Completion time (s)") +
+  geom_line() +
+  geom_point()
+
+#####################
+LSM_with_direction<-lsmeans::lsmeans(model1,~trial_type*target_distance*direction_axis)	#Estimates for each level
+T_with_direction<-contrast(LSM_with_direction, "pairwise",adjust="none");		#Estiates for the contrasts
+LSM_summary<-summary(LSM_with_direction)
+
+#capture.output(T_with_direction,file=paste("Direction Contrast Completion time",".txt",sep=""))
+
+#Back transforming
+LSM_summary$lsmean <- 1/(LSM_summary$lsmean)^2
+LSM_summary$lower.CL <- 1/(LSM_summary$lower.CL)^2
+LSM_summary$upper.CL <- 1/(LSM_summary$upper.CL)^2
+LSM_summary$target_distance <- factor(LSM_summary$target_distance, levels = rev(levels(LSM_summary$target_distance)))
+
+#Subset
+midair.subset<-subset(LSM_summary,trial_type=="midair")
+touch.subset<-subset(LSM_summary,trial_type=="touch+inertia")
+
+ggplot(midair.subset, aes(x=target_distance, y=lsmean, colour=direction_axis, shape=direction_axis, group=interaction(trial_type,direction_axis))) + 
+  geom_errorbar(aes(ymin=lower.CL, ymax=upper.CL), width=.1, 
+                position=position_dodge(0.2)) +
+  scale_colour_hue(name="Target Direction")  +     # Set legend title
+  scale_shape_manual(values=1:8, name="Target Direction") +
+  scale_linetype_discrete(name="Target Direction") +
+  xlab("Target Distance") +
+  ylab("Completion time (s)") +
+  geom_line(position=position_dodge(0.2)) +
+  geom_point(position=position_dodge(0.2))
+
+ggplot(touch.subset, aes(x=target_distance, y=lsmean, colour=direction_axis, group=interaction(trial_type,direction_axis))) + 
+  geom_errorbar(aes(ymin=lower.CL, ymax=upper.CL), width=.1, 
+                position=position_dodge(0.2)) +
+  scale_colour_hue(name="Target Direction")  +     # Set legend title
+  scale_linetype_discrete(name="Target Direction") +
+  xlab("Target Distance") +
+  ylab("Completion time (s)") +
+  geom_line(position=position_dodge(0.2)) +
+  geom_point(position=position_dodge(0.2))
+
+##################Estimates from the model
+summary(model1)				#The estimates HAVE TO BE BACKTRANSFORMED
+
+confint(model1)				#HAVE TO BE TRANSFORMED BACK
+
+
+#################Model validation
+
+residuals<-residuals(model1)
+
+#Test of the variance homogeneity
+plot(fitted(model1),residuals);  abline(0,0)
+
+#Test of the normal distribution
+hist(residuals)
+qqnorm(residuals(model1)); abline(mean(residuals),sd(residuals))
+
+
+
+#######Rod
+boxcox(completion_time ~ trial_type+target_distance)		## NB NBNBNBNBNB
+
+
+
+
+

@@ -1,0 +1,8 @@
+1. Nr of clutches + completion time.
+
+	user_id,trial_type,distance,direction(axis),nr_of_clutches,completion_time,test_number
+
+2. User satisfaction survey
+
+	user_id,trial_type,q1,q2,q3,q4,q5,q6,comment,prefered_method
+

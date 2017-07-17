@@ -1,0 +1,20 @@
+{
+    "collab_server" : "",
+    "contents" : "####Fatique Q3\n\n####################Load packages\n#install.packages(\"lme4\");install.packages(\"lsmeans\");install.packages(\"lmerTest\");install.packages(\"MASS\")\n#install.packages(\"gdata\");install.packages(\"ggplot2\");install.packages(\"formattable\");install.packages(\"varhandle\");\nlibrary(varhandle)\nlibrary(lme4);library(lsmeans);library(lmerTest);library(MASS)\nlibrary(gdata);library(ggplot2)\n####################Read in data\nd=read.xls(\"questions.xlsx\",header=TRUE)\nd;attach(d)\nhead(d)\n\nget_model_estimate_matrix <- function (question) {\n  #Hypothesis testing\n  model3<-lmer(question ~ Device_assessment + (1|User_Id))\t\t#Repeated measures factorial ANOVA (mixed effects model)\n  model2<-lmer(question ~ (1|User_Id))\n  anova_result = anova(model2,model3)\n  \n  #Read about lsmeans: https://cran.r-project.org/web/packages/lsmeans/vignettes/using-lsmeans.pdf\n  LSM<-lsmeans::lsmeans(model3,~Device_assessment)\t\t#Estimates for each level\n  Get<-confint(LSM)\n  \n  q<-as.vector(deparse(substitute(question)))\n  a<-as.vector(Get$Device_assessment)\n  b<-as.vector(Get$lsmean)\n  c<-as.vector(Get$lower.CL)\n  d<-as.vector(Get$upper.CL)\n  e<-as.vector(anova_result$`Pr(>Chisq)`[2])\n  matrix<-cbind(q,a,b,c,d,e)\n  return(matrix)\n}\n\nQ1_matrix = get_model_estimate_matrix(Q1)\nQ2_matrix = get_model_estimate_matrix(Q2)\nQ3_matrix = get_model_estimate_matrix(Q3)\nQ4_matrix = get_model_estimate_matrix(Q4)\nQ5_matrix = get_model_estimate_matrix(Q5)\nQ6_matrix = get_model_estimate_matrix(Q6)\n\nQ_matrix = rbind(Q1_matrix,Q2_matrix,Q3_matrix,Q4_matrix,Q5_matrix,Q6_matrix)\nQ_dataframe = as.data.frame(Q_matrix)\n\ntabbedMeans <- tapply(as.numeric(as.vector(Q_dataframe$b)), list(Q_dataframe$a,\n                                                                 Q_dataframe$q),\n                      function(x) c(x = x))\ntabbedLow <- tapply(as.numeric(as.vector(Q_dataframe$c)), list(Q_dataframe$a,\n                                                               Q_dataframe$q),\n                    function(x) c(x = x))\ntabbedHigh <- tapply(as.numeric(as.vector(Q_dataframe$d)), list(Q_dataframe$a,\n                                                                Q_dataframe$q),\n                     function(x) c(x = x))\nbarCenters <- barplot(height = tabbedMeans,\n                      beside = TRUE, las = 1,\n                      ylim = c(0, 7),\n                      main = \"User Questionnaire Results\",\n                      ylab = \"Mean Rating\",\n                      axes = TRUE,\n                      border = \"black\",\n                      legend.text = TRUE,\n                      args.legend = list(title = \"Interaction Methods\", \n                                         x = \"topright\",\n                                         cex = .7))\n#segments(barCenters, tabbedLow, barCenters,\n#         tabbedHigh, lwd = 0.5)\n\n#arrows(barCenters, tabbedLow, barCenters,\n#       tabbedHigh, lwd = 0.5, angle = 90,\n#       code = 3, length = 0.05)\n#text(x=barCenters , y= tabbedHigh + 0.2, labels=paste(\"p=\",format(round(unfactor(Q_dataframe$e), 3), nsmall = 3)), xpd=TRUE, cex=0.7)\n\n",
+    "created" : 1485181636280.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1957228247",
+    "id" : "C9390DD0",
+    "lastKnownWriteTime" : 1485267116,
+    "last_content_update" : 1485267116984,
+    "path" : "~/Documents/master-thesis/evaluation/Statistics-Fatique-Q3.R",
+    "project_path" : "Statistics-Fatique-Q3.R",
+    "properties" : {
+    },
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
